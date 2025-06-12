@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spam Detection Model Trainer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { text-align: center; }
+        .btn { 
+            background-color: #4CAF50; 
+            border: none; 
+            color: white; 
+            padding: 15px 32px; 
+            text-align: center; 
+            text-decoration: none; 
+            display: inline-block; 
+            font-size: 16px; 
+            margin: 10px; 
+            cursor: pointer; 
+            border-radius: 4px;
+        }
+        .btn:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .status { padding: 20px; font-weight: bold; }
+        .ready { color: #4CAF50; }
+        .training { color: #FF9800; }
+        .not-ready { color: #f44336; }
+        .downloads { margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Spam Detection Model Trainer</h1>
+        
+        <div class="status">
+            {% if training %}
+                <p class="training">Training in progress... Please wait</p>
+            {% elif status == "ready" %}
+                <p class="ready">Model is ready for download!</p>
+            {% else %}
+                <p class="not-ready">Model not trained yet</p>
+            {% endif %}
+        </div>
+
+        <form action="/train" method="post">
+            <button 
+                type="submit" 
+                class="btn"
+                {% if training or status == "ready" %}disabled{% endif %}>
+                Train Model
+            </button>
+        </form>
+
+        {% if status == "ready" %}
+        <div class="downloads">
+            <h2>Download Model Files:</h2>
+            <a href="/download/spam_model.joblib" class="btn">Download Spam Model</a>
+            <a href="/download/tfidf_vectorizer.joblib" class="btn">Download Vectorizer</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
