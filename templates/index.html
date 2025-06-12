@@ -1,0 +1,31 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spam Email Classifier</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .email { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        .spam { background-color: #ffdddd; border-left: 4px solid #ff0000; }
+        .ham { background-color: #ddffdd; border-left: 4px solid #00aa00; }
+        .header { display: flex; justify-content: space-between; }
+        .subject { font-weight: bold; font-size: 1.2em; }
+        .spam-tag { background-color: #ff0000; color: white; padding: 3px 8px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>Spam Email Classifier</h1>
+    
+    {% for email in emails %}
+    <div class="email {% if email.spam %}spam{% else %}ham{% endif %}">
+        <div class="header">
+            <div class="subject">{{ email.subject }}</div>
+            {% if email.spam %}<div class="spam-tag">SPAM</div>{% endif %}
+        </div>
+        <div class="from">From: {{ email.from }}</div>
+        <div class="date">Date: {{ email.date }}</div>
+        <p class="snippet">{{ email.snippet }}</p>
+    </div>
+    {% endfor %}
+</body>
+</html>
