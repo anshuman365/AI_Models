@@ -14,9 +14,10 @@ app.config['TRAINING'] = False
 def train_model():
     app.config['TRAINING'] = True
     try:
-        # Load dataset
+        # Load dataset - UPDATED URL
         print("Downloading dataset...")
-        df = pd.read_csv('https://raw.githubusercontent.com/mwitiderrick/spam/master/spam.csv', encoding='latin-1')
+        url = "https://raw.githubusercontent.com/Ankit152/spam-sms/master/spam.csv"
+        df = pd.read_csv(url, encoding='latin-1')
         df = df[['v1', 'v2']]
         df.columns = ['label', 'text']
         
@@ -60,4 +61,4 @@ def download_file(filename):
     return "File not found", 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=10000, debug=True)
