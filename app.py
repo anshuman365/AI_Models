@@ -4,26 +4,76 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import make_pipeline
 import joblib
-import os
 import threading
+import requests
+import zipfile
+import io
+import os
 
 app = Flask(__name__)
 app.config['MODEL_READY'] = False
 app.config['TRAINING'] = False
 
+def download_dataset():
+    """Try multiple sources to download the dataset"""
+    urls = [
+        # Option 1
+        ("https://raw.githubusercontent.com/Ankit152/spam-sms/master/spam.csv", 
+         lambda: pd.read_csv("https://raw.githubusercontent.com/Ankit152/spam-sms/master/spam.csv", encoding='latin-1')),
+        
+        # Option 2
+        ("https://raw.githubusercontent.com/mohitgupta-omg/Kaggle-SMS-Spam-Collection-Dataset-/master/spam.csv", 
+         lambda: pd.read_csv("https://raw.githubusercontent.com/mohitgupta-omg/Kaggle-SMS-Spam-Collection-Dataset-/master/spam.csv", encoding='latin-1')),
+        
+        # Option 3 (different column names)
+        ("https://raw.githubusercontent.com/stedy/Machine-Learning-with-R-datasets/master/sms_spam.csv",
+         lambda: pd.read_csv("https://raw.githubusercontent.com/stedy/Machine-Learning-with-R-datasets/master/sms_spam.csv")),
+        
+        # Option 4 (UCI zip file)
+        ("https://archive.ics.uci.edu/ml/machine-learning-databases/00228/smsspamcollection.zip",
+         lambda: download_and_extract_uci())
+    ]
+    
+    for url, download_func in urls:
+        try:
+            print(f"Trying dataset from: {url}")
+            df = download_func()
+            if not df.empty:
+                print(f"Successfully loaded dataset from {url}")
+                return df
+        except Exception as e:
+            print(f"Failed to load from {url}: {str(e)}")
+    
+    raise Exception("All dataset sources failed")
+
+def download_and_extract_uci():
+    """Download and extract UCI dataset"""
+    response = requests.get("https://archive.ics.uci.edu/ml/machine-learning-databases/00228/smsspamcollection.zip")
+    response.raise_for_status()
+    
+    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        with z.open('SMSSpamCollection') as f:
+            df = pd.read_csv(f, sep='\t', header=None, names=['label', 'text'])
+    return df
+
 def train_model():
     app.config['TRAINING'] = True
     try:
-        # Load dataset - UPDATED URL
+        # Load dataset
         print("Downloading dataset...")
-        url = "https://raw.githubusercontent.com/Ankit152/spam-sms/master/spam.csv"
-        df = pd.read_csv(url, encoding='latin-1')
-        df = df[['v1', 'v2']]
-        df.columns = ['label', 'text']
+        df = download_dataset()
+        
+        # Handle different column names
+        if 'v1' in df.columns and 'v2' in df.columns:
+            df = df[['v1', 'v2']].rename(columns={'v1': 'label', 'v2': 'text'})
+        elif 'type' in df.columns:
+            df = df.rename(columns={'type': 'label'})
         
         # Preprocess data
-        df['label'] = df['label'].map({'ham': 0, 'spam': 1})
-        X = df['text']
+        df['label'] = df['label'].map({'ham': 0, 'spam': 1, 'yes':1, 'no':0})
+        df['label'] = pd.to_numeric(df['label'], errors='coerce').fillna(0).astype(int)
+        
+        X = df['text'].fillna('')
         y = df['label']
         
         # Train model
