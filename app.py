@@ -13,6 +13,10 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 import string
 import re
+import os
+import json
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -130,6 +134,31 @@ def get_emails(max_results=10):
     
     return email_list
 
+# Update create_credentials_from_env()
+def create_credentials_from_env():
+    """Create credentials.json from environment variables"""
+    credentials_file = 'credentials.json'
+    
+    if os.path.exists(credentials_file):
+        return
+    
+    # Get credentials from environment
+    credentials_data = {
+        "installed": {
+            "client_id": os.getenv("CLIENT_ID"),
+            "project_id": os.getenv("PROJECT_ID"),
+            "auth_uri": os.getenv("AUTH_URI"),
+            "token_uri": os.getenv("TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("AUTH_PROVIDER"),
+            "client_secret": os.getenv("CLIENT_SECRET"),
+            "redirect_uris": json.loads(os.getenv("REDIRECT_URIS"))
+        }
+    }
+    
+    with open(credentials_file, 'w') as f:
+        json.dump(credentials_data, f, indent=2)
+    print(f"Created {credentials_file} from environment variables")
+
 @app.route('/')
 def index():
     """Main endpoint to display emails"""
@@ -140,4 +169,5 @@ def index():
         return f"Error: {str(e)}"
 
 if __name__ == "__main__":
+    create_credentials_from_env()
     app.run(host='0.0.0.0', port=5000)
