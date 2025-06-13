@@ -33,7 +33,7 @@ tfidf = joblib.load('tfidf_vectorizer.joblib')
 # Gmail API setup
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 TOKEN_FILE = 'token.json'
-CREDENTIALS_FILE = 'credentials.json'
+CREDENTIALS_FILE = 'credentials.json'  
 
 def get_gmail_service():
     """Authenticate and create Gmail API service"""
@@ -134,31 +134,26 @@ def get_emails(max_results=10):
     
     return email_list
 
-# Update create_credentials_from_env()
-def create_credentials_from_env():
-    """Create credentials.json from environment variables"""
-    credentials_file = 'credentials.json'
+def get_gmail_service():
+    """Authenticate and create Gmail API service"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     
-    if os.path.exists(credentials_file):
-        return
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CREDENTIALS_FILE, SCOPES)  # Now uses the global constant
+            creds = flow.run_local_server(port=0)
+        
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
     
-    # Get credentials from environment
-    credentials_data = {
-        "installed": {
-            "client_id": os.getenv("CLIENT_ID"),
-            "project_id": os.getenv("PROJECT_ID"),
-            "auth_uri": os.getenv("AUTH_URI"),
-            "token_uri": os.getenv("TOKEN_URI"),
-            "auth_provider_x509_cert_url": os.getenv("AUTH_PROVIDER"),
-            "client_secret": os.getenv("CLIENT_SECRET"),
-            "redirect_uris": json.loads(os.getenv("REDIRECT_URIS"))
-        }
-    }
-    
-    with open(credentials_file, 'w') as f:
-        json.dump(credentials_data, f, indent=2)
-    print(f"Created {credentials_file} from environment variables")
+    return build('gmail', 'v1', credentials=creds)
 #Vayvstha tight hai yadav ji
+
 @app.route('/')
 def index():
     """Main endpoint to display emails"""
@@ -169,5 +164,5 @@ def index():
         return f"Error: {str(e)}"
 
 if __name__ == "__main__":
-    create_credentials_from_env()
+    create_credentials_from_env() 
     app.run(host='0.0.0.0', port=5000)
