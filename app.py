@@ -13,10 +13,11 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 import string
 import re
-import os
 import json
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -33,7 +34,28 @@ tfidf = joblib.load('tfidf_vectorizer.joblib')
 # Gmail API setup
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 TOKEN_FILE = 'token.json'
-CREDENTIALS_FILE = 'credentials.json'  
+CREDENTIALS_FILE = 'credentials.json'
+
+def create_credentials_from_env():
+    """Create credentials.json from environment variables"""
+    if os.path.exists(CREDENTIALS_FILE):
+        return
+    
+    credentials_data = {
+        "installed": {
+            "client_id": os.getenv("CLIENT_ID"),
+            "project_id": os.getenv("PROJECT_ID"),
+            "auth_uri": os.getenv("AUTH_URI"),
+            "token_uri": os.getenv("TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("AUTH_PROVIDER"),
+            "client_secret": os.getenv("CLIENT_SECRET"),
+            "redirect_uris": json.loads(os.getenv("REDIRECT_URIS", '["http://localhost"]'))
+        }
+    }
+    
+    with open(CREDENTIALS_FILE, 'w') as f:
+        json.dump(credentials_data, f, indent=2)
+    print(f"Created {CREDENTIALS_FILE} from environment variables")
 
 def get_gmail_service():
     """Authenticate and create Gmail API service"""
@@ -45,6 +67,7 @@ def get_gmail_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
+            create_credentials_from_env()  # Ensure credentials exist
             flow = InstalledAppFlow.from_client_secrets_file(
                 CREDENTIALS_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -134,26 +157,6 @@ def get_emails(max_results=10):
     
     return email_list
 
-def get_gmail_service():
-    """Authenticate and create Gmail API service"""
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES)  # Now uses the global constant
-            creds = flow.run_local_server(port=0)
-        
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-    
-    return build('gmail', 'v1', credentials=creds)
-#Vayvstha tight hai yadav ji
-
 @app.route('/')
 def index():
     """Main endpoint to display emails"""
@@ -164,5 +167,5 @@ def index():
         return f"Error: {str(e)}"
 
 if __name__ == "__main__":
-    create_credentials_from_env() 
+    create_credentials_from_env()
     app.run(host='0.0.0.0', port=5000)
