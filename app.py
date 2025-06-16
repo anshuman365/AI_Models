@@ -234,7 +234,7 @@ def keep_alive():
     while True:
         try:
             # Self-ping to keep the service active
-            requests.get(f"http://localhost:{KEEP_ALIVE_PORT}/", timeout=10)
+            requests.get(f"https://anshu-singh-ai.onrender.com", timeout=10)
             logging.info("Keep-alive ping successful")
         except Exception as e:
             logging.error(f"Keep-alive ping failed: {str(e)}")
