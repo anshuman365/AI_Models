@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">System Settings</h2>
+        </div>
+        
+        <form method="POST" action="/settings" style="padding: 25px;">
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">
+                    <i class="fas fa-sync-alt"></i> Ping Interval (seconds)
+                </label>
+                <input 
+                    type="number" 
+                    name="ping_interval" 
+                    value="{{ ping_interval }}" 
+                    min="10" 
+                    class="form-control"
+                    required
+                >
+                <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8;">
+                    Time between ping cycles (minimum 10 seconds)
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">
+                    <i class="fas fa-database"></i> Max History Records
+                </label>
+                <input 
+                    type="number" 
+                    name="max_history" 
+                    value="{{ max_history }}" 
+                    min="10" 
+                    class="form-control"
+                    required
+                >
+                <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8;">
+                    Maximum number of ping records to keep (minimum 10)
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">
+                    <i class="fas fa-link"></i> Self URL
+                </label>
+                <input 
+                    type="url" 
+                    name="self_url" 
+                    value="{{ self_url }}" 
+                    class="form-control"
+                    placeholder="http://your-app-url.com"
+                >
+                <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8;">
+                    URL for self-pinging (used to keep the monitor alive)
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <button type="submit" class="btn">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Danger Zone</h2>
+        </div>
+        
+        <div style="padding: 25px;">
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 10px; color: #ef4444;">
+                    <i class="fas fa-trash"></i> Clear All History
+                </h3>
+                <p style="margin-bottom: 15px; color: #94a3b8;">
+                    Permanently delete all ping history records. This action cannot be undone.
+                </p>
+                <a href="/clear-history" class="btn" style="background: #ef4444;" onclick="return confirm('Are you sure? This cannot be undone.')">
+                    <i class="fas fa-trash"></i> Clear History
+                </a>
+            </div>
+            
+            <div>
+                <h3 style="margin-bottom: 10px; color: #ef4444;">
+                    <i class="fas fa-skull"></i> Reset Configuration
+                </h3>
+                <p style="margin-bottom: 15px; color: #94a3b8;">
+                    Reset all settings to default values and remove all monitored URLs.
+                </p>
+                <a href="/reset-config" class="btn" style="background: #ef4444;" onclick="return confirm('Are you sure? This will remove all your settings and URLs.')">
+                    <i class="fas fa-redo"></i> Reset Configuration
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

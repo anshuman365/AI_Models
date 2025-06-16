@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Full Ping History</h2>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Service URL</th>
+                        <th>Status</th>
+                        <th>Response Time</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in history %}
+                    <tr>
+                        <td>{{ record.timestamp|format_datetime }}</td>
+                        <td>{{ record.url }}</td>
+                        <td>
+                            {% if record.result.status == 'success' %}
+                                <span class="status status-success">
+                                    <i class="fas fa-check"></i> Success
+                                </span>
+                            {% else %}
+                                <span class="status status-danger">
+                                    <i class="fas fa-times"></i> Error
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.result.response_time %}
+                                {{ record.result.response_time }}s
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.result.http_status %}
+                                HTTP {{ record.result.http_status }}
+                            {% elif record.result.error %}
+                                {{ record.result.error }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center;">No ping history available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
