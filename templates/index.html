@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-link"></i>
+            </div>
+            <div class="stat-title">MONITORED SERVICES</div>
+            <div class="stat-value">{{ stats.total_urls }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-title">TOTAL PINGS</div>
+            <div class="stat-value">{{ stats.total_pings }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-title">LAST PING</div>
+            <div class="stat-value">
+                {% if stats.last_ping != 'Never' %}
+                    {{ stats.last_ping|time_ago }}
+                {% else %}
+                    Never
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-server"></i>
+            </div>
+            <div class="stat-title">SELF URL</div>
+            <div class="stat-value" style="font-size: 1.1rem;">{{ self_url }}</div>
+        </div>
+    </div>
+
+    <form class="add-url-form" action="/add" method="POST">
+        <input type="text" name="url" class="form-control" placeholder="https://example-service.onrender.com" required>
+        <button type="submit" class="btn">
+            <i class="fas fa-plus"></i> Add Service
+        </button>
+    </form>
+
+    <div class="main-content">
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Monitored Services</h2>
+                </div>
+                
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Service URL</th>
+                                <th>Status</th>
+                                <th>Success Rate</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for url in urls %}
+                            <tr>
+                                <td>{{ url }}</td>
+                                <td>
+{% set last_status = namespace(found=false) %}
+{% for record in ping_history|reverse %}
+    {% if record.url == url and not last_status.found %}
+        {% if record.result.status == 'success' %}
+            <span class="status status-success">
+                <i class="fas fa-check"></i> Active
+            </span>
+            {% set last_status.found = true %}
+        {% else %}
+            <span class="status status-danger">
+                <i class="fas fa-exclamation-circle"></i> Down
+            </span>
+            {% set last_status.found = true %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+                                </td>
+                                <td>{{ success_rates[url] }}</td>
+                                <td class="url-actions">
+                                    <a href="/remove/{{ url|urlencode }}" class="action-btn" onclick="return confirm('Are you sure?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center;">No services added yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Activity</h2>
+                </div>
+                
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Response</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in history %}
+                            <tr>
+                                <td>{{ record.timestamp|format_datetime }}</td>
+                                <td>{{ record.url|truncate(30) }}</td>
+                                <td>
+                                    {% if record.result.status == 'success' %}
+                                        <span class="status status-success">
+                                            <i class="fas fa-check"></i> Success
+                                        </span>
+                                    {% else %}
+                                        <span class="status status-danger">
+                                            <i class="fas fa-times"></i> Error
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.result.response_time %}
+                                        {{ record.result.response_time }}s
+                                    {% else %}
+                                        {{ record.result.error|truncate(30) }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center;">No ping history yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Service Health</h2>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">System Information</h2>
+                </div>
+                
+                <div style="padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span>Ping Interval:</span>
+                        <strong>{{ ping_interval }} seconds</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span>Max History:</span>
+                        <strong>{{ max_history }} records</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span>Total Records:</span>
+                        <strong>{{ ping_history|length }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Last Config Save:</span>
+                        <strong>{{ config_mtime|format_datetime if config_mtime else 'Never' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Health chart
+        const healthCtx = document.getElementById('healthChart').getContext('2d');
+        const healthChart = new Chart(healthCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Down'],
+                datasets: [{
+                    data: [{{ active_services }}, {{ down_services }}],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(239, 68, 68, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(239, 68, 68, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#e2e8f0',
+                            padding: 20
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            window.location.reload();
+        }, 30000);
+    </script>
+{% endblock %}
