@@ -1,0 +1,5 @@
+Flask
+nltk
+sumy
+torch
+gunicorn

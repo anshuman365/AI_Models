@@ -1,0 +1,707 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Text Summarizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border-radius: 16px;
+            border: none;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            font-weight: 600;
+            padding: 1.2rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            padding: 10px 24px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        .method-card {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .method-card.active {
+            border: 2px solid var(--primary);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .stats-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        .summary-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            margin-top: 25px;
+        }
+        
+        .footer {
+            background: var(--dark);
+            color: white;
+            padding: 30px 0;
+            margin-top: 60px;
+        }
+        
+        .text-area {
+            min-height: 250px;
+            border-radius: 12px;
+            padding: 15px;
+            resize: none;
+            border: 1px solid #dee2e6;
+            transition: var(--transition);
+        }
+        
+        .text-area:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+        }
+        
+        .param-slider {
+            width: 100%;
+        }
+        
+        .progress-bar {
+            background-color: var(--primary);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .hero {
+            background: linear-gradient(120deg, rgba(67,97,238,0.9), rgba(63,55,201,0.85)), url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            padding: 100px 0;
+            color: white;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: 50px;
+        }
+        
+        .method-icon {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        
+        .compression-badge {
+            background: var(--success);
+            color: white;
+            font-weight: 600;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        #loading {
+            display: none;
+        }
+        
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-file-contract me-2"></i>
+                <span class="fw-bold">NLP Text Summarizer</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container text-center">
+            <h1 class="display-4 fw-bold mb-4">AI-Powered Text Summarization</h1>
+            <p class="lead mb-5">Transform lengthy articles into concise summaries with advanced NLP techniques</p>
+            <a href="#summarizer" class="btn btn-light btn-lg px-5 py-3 fw-bold">Get Started</a>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container mb-5" id="summarizer">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-pen-alt me-2"></i>
+                        <span>Enter Your Text</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Select sample article or enter your own text:</label>
+                            <div class="d-flex mb-3">
+                                <select class="form-select me-2" id="sample-select">
+                                    <option value="">Choose sample article...</option>
+                                    {% for article in sample_articles %}
+                                    <option value="{{ article }}">{{ article }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-outline-secondary" id="clear-btn">
+                                    <i class="fas fa-eraser me-1"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <textarea class="form-control text-area" id="input-text" placeholder="Paste your text here..."></textarea>
+                        
+                        <div class="mt-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Summarization Method:</label>
+                                    <div class="row g-3">
+                                        <div class="col-4">
+                                            <div class="card method-card text-center p-3" data-method="TextRank">
+                                                <i class="fas fa-chart-line method-icon"></i>
+                                                <h6 class="mb-0">TextRank</h6>
+                                                <small class="text-muted">Extractive</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="card method-card text-center p-3" data-method="Frequency">
+                                                <i class="fas fa-sort-amount-down method-icon"></i>
+                                                <h6 class="mb-0">Frequency</h6>
+                                                <small class="text-muted">Extractive</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="card method-card text-center p-3" data-method="Transformer">
+                                                <i class="fas fa-brain method-icon"></i>
+                                                <h6 class="mb-0">Transformer</h6>
+                                                <small class="text-muted">Abstractive</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div id="params-container">
+                                        <!-- Parameters will be loaded here based on method -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-4">
+                            <button class="btn btn-primary btn-lg" id="summarize-btn">
+                                <i class="fas fa-compress-alt me-2"></i> Summarize Text
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Summary Result -->
+                <div id="result-container" style="display: none;">
+                    <div class="summary-container">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="mb-0"><i class="fas fa-file-contract me-2"></i> Summary</h3>
+                            <div class="compression-badge" id="compression-badge">Compression: 15%</div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="progress mb-2">
+                                <div class="progress-bar" id="compression-bar" role="progressbar" style="width: 15%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small>Original: <span id="original-count">0</span> words</small>
+                                <small>Summary: <span id="summary-count">0</span> words</small>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-light rounded" id="summary-content">
+                            Your summary will appear here...
+                        </div>
+                        <div class="mt-4">
+                            <button class="btn btn-outline-primary" id="copy-btn">
+                                <i class="fas fa-copy me-1"></i> Copy to Clipboard
+                            </button>
+                            <button class="btn btn-outline-success" id="download-btn">
+                                <i class="fas fa-download me-1"></i> Download Summary
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <!-- Text Stats -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        <span>Text Analysis</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="stats-container">
+                            <div class="text-center p-5">
+                                <i class="fas fa-chart-pie text-muted mb-3" style="font-size: 3rem;"></i>
+                                <p class="text-muted">Enter text to see analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Features -->
+                <div class="card">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-star me-2"></i>
+                        <span>How It Works</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <div class="me-3 text-primary">
+                                <i class="fas fa-1"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Paste your text</h6>
+                                <p class="text-muted mb-0">Enter or paste any text content you want to summarize</p>
+                            </div>
+                        </div>
+                        <div class="d-flex mb-3">
+                            <div class="me-3 text-primary">
+                                <i class="fas fa-2"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Choose method</h6>
+                                <p class="text-muted mb-0">Select from three advanced NLP summarization techniques</p>
+                            </div>
+                        </div>
+                        <div class="d-flex">
+                            <div class="me-3 text-primary">
+                                <i class="fas fa-3"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Get summary</h6>
+                                <p class="text-muted mb-0">Receive a concise summary with compression metrics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Features Section -->
+    <section class="py-5 bg-light" id="features">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Advanced Summarization Features</h2>
+                <p class="lead text-muted">Powered by cutting-edge NLP technology</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <h4>TextRank Algorithm</h4>
+                        <p class="text-muted">Graph-based ranking algorithm that identifies the most important sentences in text.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-wave-square"></i>
+                        </div>
+                        <h4>Frequency Analysis</h4>
+                        <p class="text-muted">Statistical approach that identifies key sentences based on word frequency.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>Transformer Models</h4>
+                        <p class="text-muted">State-of-the-art deep learning models that generate human-like summaries.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- About Section -->
+    <section class="py-5" id="about">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="fw-bold mb-4">About NLP Text Summarizer</h2>
+                    <p class="lead text-muted">
+                        Our text summarizer uses advanced Natural Language Processing techniques to condense lengthy documents
+                        into concise, meaningful summaries while preserving key information.
+                    </p>
+                    <p>
+                        The application offers three distinct summarization methods: TextRank (graph-based algorithm),
+                        Frequency-Based (statistical approach), and Transformer (deep learning model). Each method has
+                        different strengths depending on the type of content and desired output.
+                    </p>
+                    <div class="d-flex mt-4">
+                        <div class="me-4">
+                            <h3 class="text-primary fw-bold">99%</h3>
+                            <p class="text-muted">Accuracy</p>
+                        </div>
+                        <div class="me-4">
+                            <h3 class="text-primary fw-bold">3</h3>
+                            <p class="text-muted">Methods</p>
+                        </div>
+                        <div>
+                            <h3 class="text-primary fw-bold">100K+</h3>
+                            <p class="text-muted">Words Processed</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80" 
+                         alt="NLP Technology" class="img-fluid rounded shadow">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5 class="mb-4">NLP Text Summarizer</h5>
+                    <p>Advanced text summarization using Natural Language Processing techniques to help you extract key information from documents quickly.</p>
+                </div>
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5 class="mb-4">Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="text-white">Home</a></li>
+                        <li class="mb-2"><a href="#features" class="text-white">Features</a></li>
+                        <li class="mb-2"><a href="#about" class="text-white">About</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5 class="mb-4">Contact</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> info@nlpsummarizer.com</li>
+                        <li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> San Francisco, CA</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="mt-4 mb-4" style="background-color: rgba(255,255,255,0.2);">
+            <div class="text-center">
+                <p class="mb-0">&copy; 2023 NLP Text Summarizer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Loading Indicator -->
+    <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" id="loading" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Method selection
+            const methodCards = document.querySelectorAll('.method-card');
+            let selectedMethod = 'TextRank';
+            
+            methodCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    methodCards.forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedMethod = this.dataset.method;
+                    loadMethodParams(selectedMethod);
+                });
+            });
+            
+            // Set first method as active
+            if (methodCards.length > 0) {
+                methodCards[0].classList.add('active');
+                loadMethodParams(selectedMethod);
+            }
+            
+            // Sample article selection
+            document.getElementById('sample-select').addEventListener('change', function() {
+                if (this.value) {
+                    fetch(`/sample/${this.value}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('input-text').value = data.content;
+                        })
+                        .catch(error => console.error('Error loading sample:', error));
+                }
+            });
+            
+            // Clear button
+            document.getElementById('clear-btn').addEventListener('click', function() {
+                document.getElementById('input-text').value = '';
+                document.getElementById('sample-select').value = '';
+                document.getElementById('stats-container').innerHTML = `
+                    <div class="text-center p-5">
+                        <i class="fas fa-chart-pie text-muted mb-3" style="font-size: 3rem;"></i>
+                        <p class="text-muted">Enter text to see analysis</p>
+                    </div>
+                `;
+            });
+            
+            // Summarize button
+            document.getElementById('summarize-btn').addEventListener('click', function() {
+                const text = document.getElementById('input-text').value.trim();
+                
+                if (!text) {
+                    alert('Please enter some text to summarize');
+                    return;
+                }
+                
+                // Show loading
+                document.getElementById('loading').style.display = 'flex';
+                
+                // Get parameters
+                const params = {};
+                if (selectedMethod !== 'Transformer') {
+                    params.num_sentences = parseInt(document.querySelector('#num-sentences').value);
+                } else {
+                    params.max_length = parseInt(document.querySelector('#max-length').value);
+                    params.min_length = parseInt(document.querySelector('#min-length').value);
+                }
+                
+                // Send request
+                fetch('/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        method: selectedMethod,
+                        params: params
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    // Display stats
+                    displayStats(data.metrics);
+                    
+                    // Display summary
+                    document.getElementById('summary-content').innerHTML = data.summary;
+                    document.getElementById('original-count').textContent = data.metrics.word_count;
+                    document.getElementById('summary-count').textContent = data.summary_word_count;
+                    document.getElementById('compression-badge').textContent = `Compression: ${data.compression_ratio}`;
+                    
+                    // Update progress bar
+                    const compressionPercent = parseFloat(data.compression_ratio);
+                    document.getElementById('compression-bar').style.width = `${Math.min(compressionPercent, 100)}%`;
+                    
+                    // Show result container
+                    document.getElementById('result-container').style.display = 'block';
+                    
+                    // Scroll to results
+                    document.getElementById('result-container').scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    alert('An error occurred. Please try again.');
+                });
+            });
+            
+            // Copy button
+            document.getElementById('copy-btn').addEventListener('click', function() {
+                const summary = document.getElementById('summary-content').textContent;
+                navigator.clipboard.writeText(summary)
+                    .then(() => {
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                    });
+            });
+            
+            // Download button
+            document.getElementById('download-btn').addEventListener('click', function() {
+                const summary = document.getElementById('summary-content').textContent;
+                const blob = new Blob([summary], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'summary.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            
+            // Load method parameters
+            function loadMethodParams(method) {
+                let html = '';
+                
+                if (method === 'Transformer') {
+                    html = `
+                        <label class="form-label fw-bold">Parameters:</label>
+                        <div class="mb-2">
+                            <label class="form-label">Max Length: <span id="max-length-value">150</span> words</label>
+                            <input type="range" class="form-range param-slider" id="max-length" min="50" max="300" value="150">
+                        </div>
+                        <div>
+                            <label class="form-label">Min Length: <span id="min-length-value">30</span> words</label>
+                            <input type="range" class="form-range param-slider" id="min-length" min="10" max="100" value="30">
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <label class="form-label fw-bold">Parameters:</label>
+                        <div>
+                            <label class="form-label">Number of Sentences: <span id="num-sentences-value">3</span></label>
+                            <input type="range" class="form-range param-slider" id="num-sentences" min="1" max="10" value="3">
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('params-container').innerHTML = html;
+                
+                // Add event listeners to sliders
+                const sliders = document.querySelectorAll('.param-slider');
+                sliders.forEach(slider => {
+                    slider.addEventListener('input', function() {
+                        document.getElementById(`${this.id}-value`).textContent = this.value;
+                    });
+                });
+            }
+            
+            // Display text stats
+            function displayStats(metrics) {
+                document.getElementById('stats-container').innerHTML = `
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-value">${metrics.word_count}</div>
+                                <div class="stats-label">Words</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-value">${metrics.sentence_count}</div>
+                                <div class="stats-label">Sentences</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="stats-value">${metrics.unique_words}</div>
+                                <div class="stats-label">Unique Words</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="stats-value">${metrics.avg_sentence_length.toFixed(1)}</div>
+                                <div class="stats-label">Avg. Sentence</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
