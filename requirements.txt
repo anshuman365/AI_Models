@@ -1,5 +1,5 @@
 Flask
 nltk
 sumy
-torch
 gunicorn
+transformers
