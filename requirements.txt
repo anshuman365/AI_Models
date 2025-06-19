@@ -2,8 +2,8 @@ pandas
 numpy
 plotly
 pillow
-torch==2.0.1+cpu
-torchvision==0.15.2+cpu
+torch
+torchvision
 transformers==4.36.2
 spacy
 sentence-transformers
