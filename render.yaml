@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: fintrack-pro
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.headless true
+    port: $PORT
+    envVars:
+      - key: PORT
+        value: 8051
