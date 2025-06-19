@@ -8,7 +8,8 @@ import spacy
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+#from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from bertopic import BERTopic
