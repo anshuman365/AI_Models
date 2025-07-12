@@ -3,13 +3,12 @@ from flask import Flask, render_template_string, Response, request, send_file
 import itertools
 import threading
 import time
-import os
 import io
 
 app = Flask(__name__)
 
 # Configuration
-MAX_DIGITS = 10000000  # Maximum allowed digits to prevent excessive computation
+MAX_DIGITS = 100000  # Maximum allowed digits to prevent excessive computation
 
 # Store calculation state per client
 calculation_states = {}
@@ -59,7 +58,7 @@ def generate_pi_stream(client_id, limit):
         for count, digit in enumerate(itertools.islice(digits, limit)):
             # Check timeout (5 seconds per 1000 digits)
             if time.time() - start_time > 5 + (limit / 1000):
-                yield "data: ERROR: Calculation timed out\n\n"
+                yield "ERROR: Calculation timed out"
                 break
             
             # Check if we should stop
@@ -319,22 +318,30 @@ def index():
 @app.route('/pi_feed')
 def pi_feed():
     """SSE route for streaming Pi digits"""
-    limit = request.args.get('limit', '1000')
-    client_id = request.args.get('client_id', 'default')
-    
-    # Parse and validate limit
-    try:
-        limit = int(limit)
-        if limit < 1:
-            limit = 1
-        elif limit > MAX_DIGITS:
-            limit = MAX_DIGITS
-            yield "data: ERROR: Maximum limit is 100,000 digits. Calculating 100,000 digits instead.\n\n"
-    except ValueError:
-        limit = 1000
-        yield "data: ERROR: Invalid digit limit. Calculating 1000 digits instead.\n\n"
-    
+    # Move request handling inside the generator function
     def event_stream():
+        # Get request parameters
+        limit = request.args.get('limit', '1000')
+        client_id = request.args.get('client_id', 'default')
+        
+        # Parse and validate limit
+        error_msg = None
+        try:
+            limit = int(limit)
+            if limit < 1:
+                limit = 1
+                error_msg = "ERROR: Minimum limit is 1 digit. Calculating 1 digit."
+            elif limit > MAX_DIGITS:
+                limit = MAX_DIGITS
+                error_msg = f"ERROR: Maximum limit is {MAX_DIGITS} digits. Calculating {MAX_DIGITS} digits instead."
+        except ValueError:
+            limit = 1000
+            error_msg = "ERROR: Invalid digit limit. Calculating 1000 digits instead."
+        
+        # Send error message if needed
+        if error_msg:
+            yield f"data: {error_msg}\n\n"
+        
         # Initialize pi string
         with pi_lock:
             pi_results[client_id] = "3."
@@ -348,8 +355,9 @@ def pi_feed():
             
             # Stream the digits
             for digit in stream:
-                if digit.startswith("data: ERROR"):
-                    yield digit
+                # Handle error messages from the stream
+                if digit.startswith("ERROR:"):
+                    yield f"data: {digit}\n\n"
                     return
                 yield f"data: {digit}\n\n"
         except Exception as e:
