@@ -318,26 +318,26 @@ def index():
 @app.route('/pi_feed')
 def pi_feed():
     """SSE route for streaming Pi digits"""
-    # Move request handling inside the generator function
+    # Get request parameters within the request context
+    limit = request.args.get('limit', '1000')
+    client_id = request.args.get('client_id', 'default')
+    
+    # Parse and validate limit
+    error_msg = None
+    try:
+        limit = int(limit)
+        if limit < 1:
+            limit = 1
+            error_msg = "ERROR: Minimum limit is 1 digit. Calculating 1 digit."
+        elif limit > MAX_DIGITS:
+            limit = MAX_DIGITS
+            error_msg = f"ERROR: Maximum limit is {MAX_DIGITS} digits. Calculating {MAX_DIGITS} digits instead."
+    except ValueError:
+        limit = 1000
+        error_msg = "ERROR: Invalid digit limit. Calculating 1000 digits instead."
+    
+    # Create the event stream with captured parameters
     def event_stream():
-        # Get request parameters
-        limit = request.args.get('limit', '1000')
-        client_id = request.args.get('client_id', 'default')
-        
-        # Parse and validate limit
-        error_msg = None
-        try:
-            limit = int(limit)
-            if limit < 1:
-                limit = 1
-                error_msg = "ERROR: Minimum limit is 1 digit. Calculating 1 digit."
-            elif limit > MAX_DIGITS:
-                limit = MAX_DIGITS
-                error_msg = f"ERROR: Maximum limit is {MAX_DIGITS} digits. Calculating {MAX_DIGITS} digits instead."
-        except ValueError:
-            limit = 1000
-            error_msg = "ERROR: Invalid digit limit. Calculating 1000 digits instead."
-        
         # Send error message if needed
         if error_msg:
             yield f"data: {error_msg}\n\n"
