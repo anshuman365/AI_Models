@@ -8,6 +8,9 @@ import io
 
 app = Flask(__name__)
 
+# Configuration
+MAX_DIGITS = 10000000  # Maximum allowed digits to prevent excessive computation
+
 # Store calculation state per client
 calculation_states = {}
 calculation_lock = threading.Lock()
@@ -52,7 +55,13 @@ def generate_pi_stream(client_id, limit):
         calculation_states[client_id] = {"running": True, "count": 0}
     
     try:
+        start_time = time.time()
         for count, digit in enumerate(itertools.islice(digits, limit)):
+            # Check timeout (5 seconds per 1000 digits)
+            if time.time() - start_time > 5 + (limit / 1000):
+                yield "data: ERROR: Calculation timed out\n\n"
+                break
+            
             # Check if we should stop
             with calculation_lock:
                 if not calculation_states.get(client_id, {}).get("running", True):
@@ -170,6 +179,10 @@ def index():
                 padding: 15px;
                 border-radius: 5px;
             }
+            .error {
+                color: #d32f2f;
+                font-weight: bold;
+            }
             h1 {
                 color: #2E8B57;
             }
@@ -180,18 +193,18 @@ def index():
             <h1>Pi Digit Calculator</h1>
             
             <div class="info">
-                <p>Calculate π to a specific number of digits or infinitely.</p>
+                <p>Calculate π to a specific number of digits (max 100,000).</p>
                 <p><strong>Note:</strong> Calculating more than 10,000 digits may slow down your browser.</p>
             </div>
             
             <div class="controls">
-                <input type="number" id="digitLimit" min="0" value="1000" placeholder="Digits limit (0=infinite)">
+                <input type="number" id="digitLimit" min="1" max="100000" value="1000" placeholder="Digits (1-100000)">
                 <button id="calculateBtn" onclick="startCalculation()">Calculate Pi</button>
                 <button id="stopBtn" onclick="stopCalculation()" style="display:none;">Stop Calculation</button>
                 <button id="downloadBtn" onclick="downloadPi()" style="display:none;">Download as TXT</button>
             </div>
             
-            <div class="status" id="status">Enter digits limit and click Calculate</div>
+            <div class="status" id="status">Enter digits (1-100,000) and click Calculate</div>
             
             <div id="pi-display">3.</div>
         </div>
@@ -210,35 +223,34 @@ def index():
                 const digitLimit = document.getElementById('digitLimit').value;
                 
                 // Validate input
-                if (!digitLimit && digitLimit !== '0') {
+                if (!digitLimit) {
                     status.textContent = 'Please enter a digit limit';
                     return;
                 }
                 
-                const limit = digitLimit === '0' ? 'infinite' : parseInt(digitLimit);
+                const limit = parseInt(digitLimit);
                 
-                if (isNaN(limit) || (limit !== 'infinite' && limit < 0)) {
-                    status.textContent = 'Please enter a valid number (≥0)';
+                if (isNaN(limit) || limit < 1 || limit > 100000) {
+                    status.innerHTML = '<span class="error">Please enter a valid number between 1 and 100,000</span>';
                     return;
                 }
                 
                 // Reset display
                 display.textContent = '3.';
                 digitCount = 0;
+                status.innerHTML = '';
                 
                 // Disable controls
                 btn.disabled = true;
                 document.getElementById('digitLimit').disabled = true;
                 stopBtn.style.display = 'inline-block';
-                downloadBtn.style.display = 'none'; // Hide download until calculation completes
+                downloadBtn.style.display = 'none';
                 
                 // Generate unique client ID
                 clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 
                 // Start calculation
-                status.textContent = limit === 'infinite' 
-                    ? 'Calculating π infinitely...' 
-                    : `Calculating π to ${limit} digits...`;
+                status.textContent = `Calculating π to ${limit} digits...`;
                 
                 eventSource = new EventSource(`/pi_feed?limit=${limit}&client_id=${clientId}`);
                 
@@ -248,17 +260,17 @@ def index():
                     if (data === 'COMPLETE') {
                         status.textContent = `Calculation complete! Total digits: ${digitCount}`;
                         cleanup();
-                        // Show download button after calculation completes
                         document.getElementById('downloadBtn').style.display = 'inline-block';
+                    } else if (data.startsWith('ERROR:')) {
+                        status.innerHTML = `<span class="error">${data}</span>`;
+                        cleanup();
                     } else {
                         display.textContent += data;
                         digitCount += data.length;
                         
                         // Update status periodically
                         if (digitCount % 100 === 0) {
-                            status.textContent = limit === 'infinite' 
-                                ? `Calculating... Digits so far: ${digitCount}` 
-                                : `Calculating... ${digitCount}/${limit} digits`;
+                            status.textContent = `Calculating... ${digitCount}/${limit} digits`;
                         }
                         
                         // Scroll to bottom to see latest digits
@@ -269,7 +281,6 @@ def index():
                 eventSource.onerror = function() {
                     status.textContent = 'Connection error or calculation stopped';
                     cleanup();
-                    // Show download button even if calculation was stopped
                     document.getElementById('downloadBtn').style.display = 'inline-block';
                 };
             }
@@ -280,7 +291,6 @@ def index():
                 }
                 fetch(`/stop_calculation?client_id=${clientId}`);
                 cleanup();
-                // Show download button after stopping
                 document.getElementById('downloadBtn').style.display = 'inline-block';
             }
             
@@ -299,7 +309,6 @@ def index():
             }
             
             function downloadPi() {
-                // Trigger download via server
                 window.location.href = `/download_pi?client_id=${clientId}`;
             }
         </script>
@@ -313,58 +322,24 @@ def pi_feed():
     limit = request.args.get('limit', '1000')
     client_id = request.args.get('client_id', 'default')
     
-    # Parse limit (0 = infinite)
+    # Parse and validate limit
     try:
         limit = int(limit)
-        if limit == 0:
-            limit = None  # Infinite
+        if limit < 1:
+            limit = 1
+        elif limit > MAX_DIGITS:
+            limit = MAX_DIGITS
+            yield "data: ERROR: Maximum limit is 100,000 digits. Calculating 100,000 digits instead.\n\n"
     except ValueError:
-        limit = 1000  # Default
+        limit = 1000
+        yield "data: ERROR: Invalid digit limit. Calculating 1000 digits instead.\n\n"
     
     def event_stream():
-        # Generate digits
-        if limit is None:  # Infinite calculation
-            digits = pi_digits()
-            # Skip the first digit (3) since we already have it
-            next(digits)
-            count = 0
-            
-            # Initialize pi string
-            with pi_lock:
-                pi_results[client_id] = "3."
-            
-            # Send initial decimal point
-            yield "data: .\n\n"
-            
-            try:
-                while True:
-                    # Check if we should stop
-                    with calculation_lock:
-                        state = calculation_states.get(client_id, {})
-                        if not state.get("running", True):
-                            break
-                    
-                    digit = next(digits)
-                    yield f"data: {digit}\n\n"
-                    count += 1
-                    
-                    # Add space every 50 digits for readability
-                    if count % 50 == 0:
-                        yield "data:  \n\n"
-                        
-                    # Update stored result
-                    with pi_lock:
-                        if client_id in pi_results:
-                            pi_results[client_id] += digit
-                        else:
-                            pi_results[client_id] = "3." + digit
-            except StopIteration:
-                pass
-        else:  # Finite calculation
-            # Initialize pi string
-            with pi_lock:
-                pi_results[client_id] = "3."
-            
+        # Initialize pi string
+        with pi_lock:
+            pi_results[client_id] = "3."
+        
+        try:
             # Get the generator
             stream = generate_pi_stream(client_id, limit)
             
@@ -373,7 +348,13 @@ def pi_feed():
             
             # Stream the digits
             for digit in stream:
+                if digit.startswith("data: ERROR"):
+                    yield digit
+                    return
                 yield f"data: {digit}\n\n"
+        except Exception as e:
+            yield f"data: ERROR: Calculation failed: {str(e)}\n\n"
+            return
         
         # Send completion signal
         yield "data: COMPLETE\n\n"
