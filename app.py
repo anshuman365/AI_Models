@@ -1,14 +1,20 @@
 # app.py
-from flask import Flask, render_template_string, Response, request
+from flask import Flask, render_template_string, Response, request, send_file
 import itertools
 import threading
 import time
+import os
+import io
 
 app = Flask(__name__)
 
 # Store calculation state per client
 calculation_states = {}
 calculation_lock = threading.Lock()
+
+# Store calculated pi digits per client
+pi_results = {}
+pi_lock = threading.Lock()
 
 # Spigot algorithm for generating Pi digits
 def pi_digits():
@@ -39,7 +45,7 @@ def pi_digits():
 def generate_pi_stream(client_id, limit):
     """Generator that yields Pi digits up to a limit"""
     digits = pi_digits()
-    yield "3."  # Start with 3 and decimal point
+    pi_str = "3."  # Start with 3 and decimal point
     
     # Track calculation state
     with calculation_lock:
@@ -53,15 +59,27 @@ def generate_pi_stream(client_id, limit):
                     break
                 calculation_states[client_id]["count"] = count + 1
             
-            yield digit
+            # Add digit to the string
+            pi_str += digit
+            
             # Add space every 50 digits for readability
             if (count + 1) % 50 == 0:
+                pi_str += " "
                 yield " "
+            else:
+                yield digit
+            
+            # Update stored result
+            with pi_lock:
+                pi_results[client_id] = pi_str
     finally:
         # Clean up
         with calculation_lock:
             if client_id in calculation_states:
                 del calculation_states[client_id]
+        # Store final result
+        with pi_lock:
+            pi_results[client_id] = pi_str
 
 @app.route('/')
 def index():
@@ -95,6 +113,7 @@ def index():
                 max-height: 400px;
                 overflow-y: auto;
                 text-align: left;
+                white-space: pre-wrap;
             }
             .controls {
                 margin: 20px auto;
@@ -129,8 +148,14 @@ def index():
             #stopBtn {
                 background-color: #f44336;
             }
+            #downloadBtn {
+                background-color: #2196F3;
+            }
             #stopBtn:hover {
                 background-color: #d32f2f;
+            }
+            #downloadBtn:hover {
+                background-color: #0b7dda;
             }
             .status {
                 margin: 10px;
@@ -160,9 +185,10 @@ def index():
             </div>
             
             <div class="controls">
-                <input type="number" id="digitLimit" min="1" value="1000" placeholder="Digits limit">
+                <input type="number" id="digitLimit" min="0" value="1000" placeholder="Digits limit (0=infinite)">
                 <button id="calculateBtn" onclick="startCalculation()">Calculate Pi</button>
                 <button id="stopBtn" onclick="stopCalculation()" style="display:none;">Stop Calculation</button>
+                <button id="downloadBtn" onclick="downloadPi()" style="display:none;">Download as TXT</button>
             </div>
             
             <div class="status" id="status">Enter digits limit and click Calculate</div>
@@ -178,6 +204,7 @@ def index():
             function startCalculation() {
                 const btn = document.getElementById('calculateBtn');
                 const stopBtn = document.getElementById('stopBtn');
+                const downloadBtn = document.getElementById('downloadBtn');
                 const display = document.getElementById('pi-display');
                 const status = document.getElementById('status');
                 const digitLimit = document.getElementById('digitLimit').value;
@@ -190,8 +217,8 @@ def index():
                 
                 const limit = digitLimit === '0' ? 'infinite' : parseInt(digitLimit);
                 
-                if (isNaN(limit) || (limit !== 'infinite' && limit < 1)) {
-                    status.textContent = 'Please enter a valid number (≥1) or 0 for infinite';
+                if (isNaN(limit) || (limit !== 'infinite' && limit < 0)) {
+                    status.textContent = 'Please enter a valid number (≥0)';
                     return;
                 }
                 
@@ -203,6 +230,7 @@ def index():
                 btn.disabled = true;
                 document.getElementById('digitLimit').disabled = true;
                 stopBtn.style.display = 'inline-block';
+                downloadBtn.style.display = 'none'; // Hide download until calculation completes
                 
                 // Generate unique client ID
                 clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -220,6 +248,8 @@ def index():
                     if (data === 'COMPLETE') {
                         status.textContent = `Calculation complete! Total digits: ${digitCount}`;
                         cleanup();
+                        // Show download button after calculation completes
+                        document.getElementById('downloadBtn').style.display = 'inline-block';
                     } else {
                         display.textContent += data;
                         digitCount += data.length;
@@ -239,6 +269,8 @@ def index():
                 eventSource.onerror = function() {
                     status.textContent = 'Connection error or calculation stopped';
                     cleanup();
+                    // Show download button even if calculation was stopped
+                    document.getElementById('downloadBtn').style.display = 'inline-block';
                 };
             }
             
@@ -248,6 +280,8 @@ def index():
                 }
                 fetch(`/stop_calculation?client_id=${clientId}`);
                 cleanup();
+                // Show download button after stopping
+                document.getElementById('downloadBtn').style.display = 'inline-block';
             }
             
             function cleanup() {
@@ -262,6 +296,11 @@ def index():
                 btn.disabled = false;
                 stopBtn.style.display = 'none';
                 document.getElementById('digitLimit').disabled = false;
+            }
+            
+            function downloadPi() {
+                // Trigger download via server
+                window.location.href = `/download_pi?client_id=${clientId}`;
             }
         </script>
     </body>
@@ -290,6 +329,10 @@ def pi_feed():
             next(digits)
             count = 0
             
+            # Initialize pi string
+            with pi_lock:
+                pi_results[client_id] = "3."
+            
             # Send initial decimal point
             yield "data: .\n\n"
             
@@ -308,9 +351,20 @@ def pi_feed():
                     # Add space every 50 digits for readability
                     if count % 50 == 0:
                         yield "data:  \n\n"
+                        
+                    # Update stored result
+                    with pi_lock:
+                        if client_id in pi_results:
+                            pi_results[client_id] += digit
+                        else:
+                            pi_results[client_id] = "3." + digit
             except StopIteration:
                 pass
         else:  # Finite calculation
+            # Initialize pi string
+            with pi_lock:
+                pi_results[client_id] = "3."
+            
             # Get the generator
             stream = generate_pi_stream(client_id, limit)
             
@@ -336,6 +390,36 @@ def stop_calculation():
                 calculation_states[client_id]["running"] = False
                 return "Calculation stopped", 200
     return "Client not found", 404
+
+@app.route('/download_pi')
+def download_pi():
+    """Download the calculated Pi digits as TXT file"""
+    client_id = request.args.get('client_id')
+    if not client_id:
+        return "Client ID missing", 400
+    
+    # Get the stored Pi result
+    with pi_lock:
+        pi_str = pi_results.get(client_id, "3.")
+    
+    # Create in-memory file
+    mem_file = io.BytesIO()
+    mem_file.write(pi_str.encode('utf-8'))
+    mem_file.seek(0)
+    
+    # Count digits after decimal point
+    decimal_digits = len(pi_str) - 2  # Subtract "3." prefix
+    
+    # Create filename
+    filename = f"pi_{decimal_digits}_digits.txt"
+    
+    # Send file
+    return send_file(
+        mem_file,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='text/plain'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
